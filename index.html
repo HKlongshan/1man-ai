@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI 工具箱 — ai.1man.ltd</title>
+  <meta name="description" content="純前端 AI 工具箱，隱私優先，無需註冊。履歷生成、合約生成、Prompt 優化、文字摘要。">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <!-- 導航 -->
+  <nav>
+    <div class="nav-inner">
+      <a href="/" class="logo">AI 工具箱</a>
+      <div class="nav-links">
+        <a href="#tools">工具</a>
+        <a href="#about">關於</a>
+        <a href="https://1man.ltd" target="_blank">主站 ↗</a>
+        <button id="themeToggle" class="btn-icon" title="切換主題">🌙</button>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Hero -->
+  <header class="hero">
+    <div class="container">
+      <h1>純前端 AI 工具箱</h1>
+      <p class="subtitle">隱私優先 · 無需註冊 · 瀏覽器端運作</p>
+      <p class="desc">所有資料處理都在您的瀏覽器完成，不上傳伺服器。<br>只需帶上您的 AI API Key，即可使用全部工具。</p>
+      <a href="#tools" class="btn-primary">開始使用 ↓</a>
+    </div>
+  </header>
+
+  <!-- 工具列表 -->
+  <section id="tools" class="section">
+    <div class="container">
+      <h2>選擇工具</h2>
+      <p class="section-desc">點擊任一工具開始使用，所有工具均為純前端實作</p>
+      <div class="tools-grid">
+
+        <a href="tools/resume.html" class="tool-card">
+          <div class="tool-icon">📄</div>
+          <h3>履歷生成器</h3>
+          <p>輸入基本資料，AI 幫你生成專業履歷。支援多種模板，可匯出 TXT。</p>
+          <span class="tool-tag">熱門</span>
+        </a>
+
+        <a href="tools/contract.html" class="tool-card">
+          <div class="tool-icon">📋</div>
+          <h3>合約 / 公文生成器</h3>
+          <p>依照範本快速生成 NDA、委託合約、正式公函等文件。</p>
+          <span class="tool-tag">實用</span>
+        </a>
+
+        <a href="tools/prompt.html" class="tool-card">
+          <div class="tool-icon">💬</div>
+          <h3>Prompt 優化器</h3>
+          <p>將模糊的需求描述，優化為高品質 AI Prompt，提升回應準確度。</p>
+          <span class="tool-tag">新功能</span>
+        </a>
+
+        <a href="tools/summary.html" class="tool-card">
+          <div class="tool-icon">📝</div>
+          <h3>文字摘要工具</h3>
+          <p>貼上長篇文章或會議記錄，快速生成重點摘要。</p>
+          <span class="tool-tag">效率</span>
+        </a>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- 使用說明 -->
+  <section id="setup" class="section section-alt">
+    <div class="container">
+      <h2>如何使用</h2>
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">1</div>
+          <h3>準備 API Key</h3>
+          <p>本工具箱支援 OpenAI、Claude、Gemini 等主流 AI API。前往各平台取得 API Key。</p>
+        </div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <h3>貼上 Key（僅存在瀏覽器）</h3>
+          <p>在各工具頁面貼上您的 API Key，資料僅存在本機瀏覽器，不會上傳伺服器。</p>
+        </div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <h3>開始使用</h3>
+          <p>選擇工具、填入資料、生成結果。全部在瀏覽器端完成。</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 隱私說明 -->
+  <section id="about" class="section">
+    <div class="container">
+      <h2>隱私承諾</h2>
+      <div class="privacy-cards">
+        <div class="privacy-card">
+          <h3>🔒 無伺服器</h3>
+          <p>本網站為純前端靜態網站，沒有任何後端伺服器收集您的資料。</p>
+        </div>
+        <div class="privacy-card">
+          <h3>🏠 資料留在本機</h3>
+          <p>您的 API Key 和輸入內容僅存在瀏覽器，不會傳送到本站伺服器。</p>
+        </div>
+        <div class="privacy-card">
+          <h3>⚡ AI API 直接呼叫</h3>
+          <p>瀏覽器直接呼叫 AI 服務商 API，中間無轉手。</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 頁尾 -->
+  <footer>
+    <div class="container">
+      <p>© 2026 AI 工具箱 — <a href="https://1man.ltd">1man.ltd</a></p>
+      <p class="footer-note">本網站為純前端工具，不收集任何用戶資料。AI 功能需自行提供 API Key。</p>
+    </div>
+  </footer>
+
+  <script src="js/app.js"></script>
+</body>
+</html>
