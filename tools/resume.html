@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>履歷生成器 — AI 工具箱</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+
+<nav>
+  <div class="nav-inner">
+    <a href="../index.html" class="logo">AI 工具箱</a>
+    <div class="nav-links">
+      <a href="../index.html#tools">工具列表</a>
+      <button id="themeToggle" class="btn-icon" title="切換主題">🌙</button>
+    </div>
+  </div>
+</nav>
+
+<div class="tool-page">
+  <a href="../index.html#tools" style="font-size:13px;color:var(--text-secondary);">← 返回工具列表</a>
+  <h1>📄 履歷生成器</h1>
+  <p class="page-desc">填寫基本資料，AI 幫你生成專業履歷文字，直接下載 TXT 檔使用。</p>
+
+  <!-- API Key -->
+  <div class="card">
+    <label>AI 供應商</label>
+    <div class="model-select">
+      <select id="provider">
+        <option value="openai">OpenAI</option>
+        <option value="claude">Claude (Anthropic)</option>
+        <option value="gemini">Gemini (Google)</option>
+      </select>
+    </div>
+    <label>API Key（僅存在本機瀏覽器）</label>
+    <div class="api-key-section">
+      <input type="password" id="apiKey" placeholder="sk-... 或 AI Key">
+      <button class="btn-secondary" onclick="saveAndUse()">儲存並使用</button>
+    </div>
+    <div id="keyStatus" class="success-msg" style="display:none;"></div>
+  </div>
+
+  <!-- 履歷表單 -->
+  <div class="card">
+    <label>姓名</label>
+    <input type="text" id="rName" placeholder="陳大文">
+
+    <label>聯絡電話</label>
+    <input type="text" id="rPhone" placeholder="+852 6123 4567">
+
+    <label>電子郵件</label>
+    <input type="text" id="rEmail" placeholder="name@example.com">
+
+    <label>目標職位</label>
+    <input type="text" id="rTarget" placeholder="高級軟體工程師">
+
+    <label>工作經驗（每行一段經驗）</label>
+    <textarea id="rExp" rows="6" placeholder="2020-2023 ABC 公司 軟體工程師&#10;2018-2020 XYZ 公司 程式設計實習生"></textarea>
+
+    <label>技能（逗號分隔）</label>
+    <input type="text" id="rSkills" placeholder="JavaScript, Python, 專案管理">
+
+    <label>學歷</label>
+    <textarea id="rEdu" rows="3" placeholder="香港大學 電腦科學學士 2014-2018"></textarea>
+
+    <label>語言能力</label>
+    <input type="text" id="rLang" placeholder="廣東話（母語）、英語（流利）、普通話（良好）">
+
+    <button class="btn" onclick="generateResume()" id="genBtn">🚀 生成履歷</button>
+    <div id="loading" class="loading">AI 生成中，請稍候...</div>
+    <div id="error" class="error-msg" style="display:none;"></div>
+  </div>
+
+  <!-- 結果 -->
+  <div class="card" id="resultCard" style="display:none;">
+    <label>生成結果（可編輯）</label>
+    <textarea id="resultText" rows="20" style="width:100%;padding:14px;border:1px solid var(--border);border-radius:8px;font-family:inherit;font-size:14px;line-height:1.8;"></textarea>
+    <div style="display:flex;gap:8px;margin-top:12px;">
+      <button class="btn" onclick="downloadResume()">📥 下載 TXT</button>
+      <button class="btn btn-secondary" onclick="copyResult()">📋 複製</button>
+    </div>
+    <div id="copyMsg" class="success-msg" style="display:none;"></div>
+  </div>
+</div>
+
+<script src="../js/app.js"></script>
+<script>
+function saveAndUse() {
+  const p = document.getElementById('provider').value;
+  const k = document.getElementById('apiKey').value.trim();
+  if (!k) { alert('請輸入 API Key'); return; }
+  saveKey(p, k);
+  const msg = document.getElementById('keyStatus');
+  msg.textContent = '✅ ' + p.toUpperCase() + ' Key 已儲存（本機）';
+  msg.style.display = 'block';
+}
+
+async function generateResume() {
+  const provider = document.getElementById('provider').value;
+  const apiKey = getKey(provider) || document.getElementById('apiKey').value.trim();
+  if (!apiKey) { showError('請先輸入並儲存 API Key'); return; }
+
+  const name = document.getElementById('rName').value.trim();
+  const phone = document.getElementById('rPhone').value.trim();
+  const email = document.getElementById('rEmail').value.trim();
+  const target = document.getElementById('rTarget').value.trim();
+  const exp = document.getElementById('rExp').value.trim();
+  const skills = document.getElementById('rSkills').value.trim();
+  const edu = document.getElementById('rEdu').value.trim();
+  const lang = document.getElementById('rLang').value.trim();
+
+  if (!name || !target) { showError('請至少填寫「姓名」和「目標職位」'); return; }
+
+  const prompt = [
+    '請幫我生成一份專業中文履歷，格式整齊，語氣專業。',
+    '姓名：' + name,
+    phone ? '電話：' + phone : '',
+    email ? '電郵：' + email : '',
+    '目標職位：' + target,
+    exp ? '工作經驗：\n' + exp : '',
+    skills ? '技能：' + skills : '',
+    edu ? '學歷：' + edu : '',
+    lang ? '語言：' + lang : '',
+  ].filter(Boolean).join('\n');
+
+  document.getElementById('genBtn').disabled = true;
+  document.getElementById('loading').classList.add('active');
+  document.getElementById('error').style.display = 'none';
+
+  try {
+    const result = await callAI({ provider, apiKey, messages: [{ role: 'user', content: prompt }] });
+    document.getElementById('resultText').value = result;
+    document.getElementById('resultCard').style.display = 'block';
+    document.getElementById('resultCard').scrollIntoView({ behavior: 'smooth' });
+  } catch(e) {
+    showError(e.message);
+  } finally {
+    document.getElementById('genBtn').disabled = false;
+    document.getElementById('loading').classList.remove('active');
+  }
+}
+
+function downloadResume() {
+  const text = document.getElementById('resultText').value;
+  const name = document.getElementById('rName').value.trim() || 'resume';
+  downloadText(name + '_履歷.txt', text);
+}
+
+function copyResult() {
+  const text = document.getElementById('resultText').value;
+  navigator.clipboard.writeText(text).then(() => {
+    const msg = document.getElementById('copyMsg');
+    msg.textContent = '✅ 已複製到剪貼簿';
+    msg.style.display = 'block';
+    setTimeout(() => msg.style.display = 'none', 2000);
+  });
+}
+
+function showError(msg) {
+  const el = document.getElementById('error');
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+</script>
+</body>
+</html>
