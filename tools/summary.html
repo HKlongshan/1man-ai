@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>文字摘要工具 — AI 工具箱</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+
+<nav>
+  <div class="nav-inner">
+    <a href="../index.html" class="logo">AI 工具箱</a>
+    <div class="nav-links">
+      <a href="../index.html#tools">工具列表</a>
+      <button id="themeToggle" class="btn-icon" title="切換主題">🌙</button>
+    </div>
+  </div>
+</nav>
+
+<div class="tool-page">
+  <a href="../index.html#tools" style="font-size:13px;color:var(--text-secondary);">← 返回工具列表</a>
+  <h1>📝 文字摘要工具</h1>
+  <p class="page-desc">貼上長篇文章、會議記錄或報告，AI 幫你快速生成重點摘要。</p>
+
+  <!-- API Key -->
+  <div class="card">
+    <label>AI 供應商</label>
+    <div class="model-select">
+      <select id="provider">
+        <option value="openai">OpenAI</option>
+        <option value="claude">Claude (Anthropic)</option>
+        <option value="gemini">Gemini (Google)</option>
+      </select>
+    </div>
+    <label>API Key（僅存在本機瀏覽器）</label>
+    <div class="api-key-section">
+      <input type="password" id="apiKey" placeholder="sk-... 或 AI Key">
+      <button class="btn-secondary" onclick="saveAndUse()">儲存並使用</button>
+    </div>
+    <div id="keyStatus" class="success-msg" style="display:none;"></div>
+  </div>
+
+  <!-- 摘要表單 -->
+  <div class="card">
+    <label>原始文章 / 會議記錄</label>
+    <textarea id="sInput" rows="10" placeholder="請貼上需要摘要的長篇文字..."></textarea>
+
+    <label>摘要風格</label>
+    <select id="sStyle">
+      <option value="bullets">條列式重點</option>
+      <option value="paragraph">一段式摘要</option>
+      <option value="todos">待辦事項清單</option>
+      <option value="report">正式報告格式</option>
+    </select>
+
+    <label>摘要長度</label>
+    <select id="sLength">
+      <option value="short">簡短（約 100 字）</option>
+      <option value="medium" selected>中等（約 300 字）</option>
+      <option value="long">詳細（約 600 字）</option>
+    </select>
+
+    <label>專注主題（選填，例如：財務、技術、人力）</label>
+    <input type="text" id="sFocus" placeholder="留空則不限主題">
+
+    <button class="btn" onclick="generateSummary()" id="genBtn">📝 生成摘要</button>
+    <div id="loading" class="loading">AI 生成中，請稍候...</div>
+    <div id="error" class="error-msg" style="display:none;"></div>
+  </div>
+
+  <!-- 結果 -->
+  <div class="card" id="resultCard" style="display:none;">
+    <label>摘要結果（可編輯）</label>
+    <textarea id="resultText" rows="18" style="width:100%;padding:14px;border:1px solid var(--border);border-radius:8px;font-family:inherit;font-size:14px;line-height:1.8;"></textarea>
+    <div style="display:flex;gap:8px;margin-top:12px;">
+      <button class="btn" onclick="downloadSummary()">📥 下載 TXT</button>
+      <button class="btn btn-secondary" onclick="copyResult()">📋 複製</button>
+    </div>
+    <div id="copyMsg" class="success-msg" style="display:none;"></div>
+  </div>
+</div>
+
+<script src="../js/app.js"></script>
+<script>
+function saveAndUse() {
+  const p = document.getElementById('provider').value;
+  const k = document.getElementById('apiKey').value.trim();
+  if (!k) { alert('請輸入 API Key'); return; }
+  saveKey(p, k);
+  const msg = document.getElementById('keyStatus');
+  msg.textContent = '✅ ' + p.toUpperCase() + ' Key 已儲存（本機）';
+  msg.style.display = 'block';
+}
+
+async function generateSummary() {
+  const provider = document.getElementById('provider').value;
+  const apiKey = getKey(provider) || document.getElementById('apiKey').value.trim();
+  if (!apiKey) { showError('請先輸入並儲存 API Key'); return; }
+
+  const input = document.getElementById('sInput').value.trim();
+  if (!input) { showError('請貼上需要摘要的文字'); return; }
+
+  const style = document.getElementById('sStyle').value;
+  const length = document.getElementById('sLength').value;
+  const focus = document.getElementById('sFocus').value.trim();
+
+  const styleDesc = {
+    bullets: '條列式重點（每點一行）',
+    paragraph: '一段式流暢摘要',
+    todos: '提取待辦事項清單，標註負責人與期限（如果有）',
+    report: '正式報告格式：背景、重點、建議',
+  };
+
+  const lengthDesc = { short: '約 100 字', medium: '約 300 字', long: '約 600 字' };
+
+  const prompt = [
+    '請對以下文字生成摘要。',
+    '摘要風格：' + (styleDesc[style] || '條列式'),
+    '摘要長度：' + (lengthDesc[length] || '中等'),
+    focus ? '專注主題：' + focus : '',
+    '',
+    '--- 原始內容 ---',
+    input,
+    '',
+    '--- 請輸出摘要 ---',
+  ].filter(Boolean).join('\n');
+
+  document.getElementById('genBtn').disabled = true;
+  document.getElementById('loading').classList.add('active');
+  document.getElementById('error').style.display = 'none';
+
+  try {
+    const result = await callAI({ provider, apiKey, messages: [{ role: 'user', content: prompt }], maxTokens: 1024 });
+    document.getElementById('resultText').value = result;
+    document.getElementById('resultCard').style.display = 'block';
+    document.getElementById('resultCard').scrollIntoView({ behavior: 'smooth' });
+  } catch(e) {
+    showError(e.message);
+  } finally {
+    document.getElementById('genBtn').disabled = false;
+    document.getElementById('loading').classList.remove('active');
+  }
+}
+
+function downloadSummary() {
+  const text = document.getElementById('resultText').value;
+  downloadText('摘要.txt', text);
+}
+
+function copyResult() {
+  const text = document.getElementById('resultText').value;
+  navigator.clipboard.writeText(text).then(() => {
+    const msg = document.getElementById('copyMsg');
+    msg.textContent = '✅ 已複製到剪貼簿';
+    msg.style.display = 'block';
+    setTimeout(() => msg.style.display = 'none', 2000);
+  });
+}
+
+function showError(msg) {
+  const el = document.getElementById('error');
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+</script>
+</body>
+</html>
