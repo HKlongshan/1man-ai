@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>合約生成器 — AI 工具箱</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+
+<nav>
+  <div class="nav-inner">
+    <a href="../index.html" class="logo">AI 工具箱</a>
+    <div class="nav-links">
+      <a href="../index.html#tools">工具列表</a>
+      <button id="themeToggle" class="btn-icon" title="切換主題">🌙</button>
+    </div>
+  </div>
+</nav>
+
+<div class="tool-page">
+  <a href="../index.html#tools" style="font-size:13px;color:var(--text-secondary);">← 返回工具列表</a>
+  <h1>📋 合約 / 公文生成器</h1>
+  <p class="page-desc">選擇合約類型，填寫關鍵資訊，AI 幫你生成正式條款文字，可下載 TXT。</p>
+
+  <!-- API Key -->
+  <div class="card">
+    <label>AI 供應商</label>
+    <div class="model-select">
+      <select id="provider">
+        <option value="openai">OpenAI</option>
+        <option value="claude">Claude (Anthropic)</option>
+        <option value="gemini">Gemini (Google)</option>
+      </select>
+    </div>
+    <label>API Key（僅存在本機瀏覽器）</label>
+    <div class="api-key-section">
+      <input type="password" id="apiKey" placeholder="sk-... 或 AI Key">
+      <button class="btn-secondary" onclick="saveAndUse()">儲存並使用</button>
+    </div>
+    <div id="keyStatus" class="success-msg" style="display:none;"></div>
+  </div>
+
+  <!-- 合約表單 -->
+  <div class="card">
+    <label>合約類型</label>
+    <select id="cType" onchange="onTypeChange()">
+      <option value="nda">保密協議（NDA）</option>
+      <option value="service">委託服務合約</option>
+      <option value="letter">正式公函 / 推薦信</option>
+      <option value="quotation">報價單</option>
+      <option value="custom">自訂合約</option>
+    </select>
+
+    <div id="dynFields"></div>
+
+    <label>額外要求（選填）</label>
+    <textarea id="cExtra" rows="3" placeholder="例如：需要包含違約條款、適用香港法律..."></textarea>
+
+    <button class="btn" onclick="generateContract()" id="genBtn">📝 生成合約</button>
+    <div id="loading" class="loading">AI 生成中，請稍候...</div>
+    <div id="error" class="error-msg" style="display:none;"></div>
+  </div>
+
+  <!-- 結果 -->
+  <div class="card" id="resultCard" style="display:none;">
+    <label>生成結果（可編輯）</label>
+    <textarea id="resultText" rows="22" style="width:100%;padding:14px;border:1px solid var(--border);border-radius:8px;font-family:inherit;font-size:14px;line-height:1.8;"></textarea>
+    <div style="display:flex;gap:8px;margin-top:12px;">
+      <button class="btn" onclick="downloadContract()">📥 下載 TXT</button>
+      <button class="btn btn-secondary" onclick="copyResult()">📋 複製</button>
+    </div>
+    <div id="copyMsg" class="success-msg" style="display:none;"></div>
+  </div>
+</div>
+
+<script src="../js/app.js"></script>
+<script>
+const fieldConfig = {
+  nda: [
+    { id: 'f1', label: '甲方名稱（披露方）', placeholder: '例如：ABC 科技有限公司' },
+    { id: 'f2', label: '乙方名稱（接收方）', placeholder: '例如：XYZ 顧問公司' },
+    { id: 'f3', label: '保密期限（月）', placeholder: '例如：24' },
+  ],
+  service: [
+    { id: 'f1', label: '委託方名稱', placeholder: '例如：ABC 公司' },
+    { id: 'f2', label: '承辦方名稱', placeholder: '例如：XYZ 自由工作者' },
+    { id: 'f3', label: '服務內容摘要', placeholder: '例如：網站開發與維護' },
+    { id: 'f4', label: '合約金額（HKD）', placeholder: '例如：50000' },
+    { id: 'f5', label: '完成期限', placeholder: '例如：2026年8月31日' },
+  ],
+  letter: [
+    { id: 'f1', label: '收件人／機構名稱', placeholder: '例如：香港大學人事部' },
+    { id: 'f2', label: '信件目的', placeholder: '例如：申請高級工程師職位' },
+    { id: 'f3', label: '關鍵內容摘要', placeholder: '例如：過去5年AI專案經驗...' },
+  ],
+  quotation: [
+    { id: 'f1', label: '客戶名稱', placeholder: '例如：ABC 公司' },
+    { id: 'f2', label: '服務／產品項目（每行一項）', placeholder: '網站設計\nAI 整合開發' },
+    { id: 'f3', label: '總金額（HKD）', placeholder: '例如：80000' },
+    { id: 'f4', label: '有效期', placeholder: '例如：30天' },
+  ],
+  custom: [
+    { id: 'f1', label: '合約標題', placeholder: '例如：租賃協議' },
+    { id: 'f2', label: '關鍵條款說明', placeholder: '詳細描述合約雙方權利義務...' },
+  ],
+};
+
+function onTypeChange() {
+  const type = document.getElementById('cType').value;
+  const fields = fieldConfig[type] || [];
+  let html = '';
+  fields.forEach(f => {
+    html += '<label>' + f.label + '</label>';
+    if (f.id === 'f2' && type === 'quotation') {
+      html += '<textarea id="' + f.id + '" rows="3" placeholder="' + (f.placeholder || '') + '"></textarea>';
+    } else {
+      html += '<input type="text" id="' + f.id + '" placeholder="' + (f.placeholder || '') + '">';
+    }
+  });
+  document.getElementById('dynFields').innerHTML = html;
+}
+onTypeChange();
+
+function saveAndUse() {
+  const p = document.getElementById('provider').value;
+  const k = document.getElementById('apiKey').value.trim();
+  if (!k) { alert('請輸入 API Key'); return; }
+  saveKey(p, k);
+  const msg = document.getElementById('keyStatus');
+  msg.textContent = '✅ ' + p.toUpperCase() + ' Key 已儲存（本機）';
+  msg.style.display = 'block';
+}
+
+function buildPrompt() {
+  const type = document.getElementById('cType').value;
+  const typeNames = { nda: '保密協議（NDA）', service: '委託服務合約', letter: '正式公函／推薦信', quotation: '報價單', custom: '自訂合約' };
+  let lines = [
+    '請幫我生成一份正式的繁體中文「' + typeNames[type] + '」，',
+    '格式工整、條款清晰、用語正式專業，適用於香港商業場景。',
+    '',
+  ];
+  const fields = fieldConfig[type] || [];
+  fields.forEach(f => {
+    const el = document.getElementById(f.id);
+    if (el && el.value.trim()) {
+      lines.push(f.label + '：' + el.value.trim());
+    }
+  });
+  const extra = document.getElementById('cExtra').value.trim();
+  if (extra) lines.push('額外要求：' + extra);
+  lines.push('', '請以條列式條款格式輸出，條款編號清晰。');
+  return lines.join('\n');
+}
+
+async function generateContract() {
+  const provider = document.getElementById('provider').value;
+  const apiKey = getKey(provider) || document.getElementById('apiKey').value.trim();
+  if (!apiKey) { showError('請先輸入並儲存 API Key'); return; }
+
+  const prompt = buildPrompt();
+  document.getElementById('genBtn').disabled = true;
+  document.getElementById('loading').classList.add('active');
+  document.getElementById('error').style.display = 'none';
+
+  try {
+    const result = await callAI({ provider, apiKey, messages: [{ role: 'user', content: prompt }] });
+    document.getElementById('resultText').value = result;
+    document.getElementById('resultCard').style.display = 'block';
+    document.getElementById('resultCard').scrollIntoView({ behavior: 'smooth' });
+  } catch(e) {
+    showError(e.message);
+  } finally {
+    document.getElementById('genBtn').disabled = false;
+    document.getElementById('loading').classList.remove('active');
+  }
+}
+
+function downloadContract() {
+  const text = document.getElementById('resultText').value;
+  const type = document.getElementById('cType').value;
+  downloadText(type + '_合約.txt', text);
+}
+
+function copyResult() {
+  const text = document.getElementById('resultText').value;
+  navigator.clipboard.writeText(text).then(() => {
+    const msg = document.getElementById('copyMsg');
+    msg.textContent = '✅ 已複製到剪貼簿';
+    msg.style.display = 'block';
+    setTimeout(() => msg.style.display = 'none', 2000);
+  });
+}
+
+function showError(msg) {
+  const el = document.getElementById('error');
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+</script>
+</body>
+</html>
